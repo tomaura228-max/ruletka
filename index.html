@@ -116,6 +116,14 @@ h2{font:700 18px Oswald,sans-serif;margin:4px 0 10px}
 #cf{position:fixed;inset:0;pointer-events:none;z-index:6}
 button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.crt{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:linear-gradient(90deg,#f7c815,#ff3d6e);color:#1a1a1a;font:700 11px Oswald,sans-serif;letter-spacing:.6px;vertical-align:middle;white-space:nowrap}
+.adm label{display:block;margin:10px 0 4px;color:var(--mu);font-size:13px}
+.adm .chk{display:flex;align-items:center;gap:8px}
+.adm input[type=checkbox]{width:auto}
+.adm select{width:100%;background:#14161a;border:1px solid var(--ln);border-radius:10px;padding:12px 14px;color:var(--tx);font:inherit;font-size:16px}
+.adm .wg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.adm .bar{margin-top:12px}
 </style><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -137,7 +145,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 
 <div class="app scr" id="game">
 <header><h1>Номерная рулетка</h1><div class="hr"><button class="ic" id="tomenu" style="width:auto;padding:0 14px">Меню</button><button class="ic" id="mu" aria-label="Звук">🔊</button><div class="bal" id="bal">0 ₽</div></div></header>
-<nav><button data-t="spin" class="on">Крутка</button><button data-t="inv">Хранилище<i id="cnt">0</i></button><button data-t="info">Шансы</button><button data-t="top">Рейтинг</button></nav>
+<nav><button data-t="spin" class="on">Крутка</button><button data-t="inv">Хранилище<i id="cnt">0</i></button><button data-t="info">Шансы</button><button data-t="top">Рейтинг</button><button data-t="adm" id="admTab" style="display:none">Админ</button></nav>
 
 <section id="spin" class="on">
 <div class="reel" id="reel"><div class="strip idle" id="strip"></div><div class="mark"></div><div class="road"></div></div>
@@ -156,6 +164,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 
 <section id="info"></section>
 <section id="top"></section>
+<section id="adm" class="adm"></section>
 </div><div id="fl"></div><canvas id="cf"></canvas>
 
 <script>
@@ -219,6 +228,7 @@ function plate(p){
 /* state */
 const dS=()=>({b:2500,inv:[],sp:0,pity:0,my:[],bt:0,best:0,bp:'',n:0});
 const CFG={apiKey:'AIzaSyATC8fW_PCiOYxzq34j-YOr1TVc7xnykrA',authDomain:'nomernaya-ruletka.firebaseapp.com',projectId:'nomernaya-ruletka',appId:'1:970241323029:web:c1a5b10e2064f3c2909e1c'};
+const ADMIN_UID='808cXijPL1XeFyhLmJxC4ITMNUY2';
 firebase.initializeApp(CFG);
 const auth=firebase.auth(),db=firebase.firestore();
 let S=dS(),uid=null,NICK='',ct=0;
@@ -247,8 +257,8 @@ function loop(){cx.clearRect(0,0,cv.width,cv.height);P.forEach(p=>{p.x+=p.vx;p.y
 function spin(){
  if(busy||S.b<COST)return;busy=true;
  S.b-=COST;S.sp++;S.pity++;
- let t=pickTier();if(S.pity>=PITY&&t<3)t=3;if(t>=3)S.pity=0;
- const p=gen(t),it={id:++S.n,p};S.inv.push(it);
+ let t=isAdm()?pickAdm():pickTier();if(S.pity>=PITY&&t<3)t=3;let fp=null;if(isAdm()){if(FORCE.p){fp=FORCE.p;t=tier(fp)}else if(FORCE.t!=null)t=FORCE.t;if(!FORCE.keep){FORCE.p=null;FORCE.t=null}}if(t>=3)S.pity=0;
+ const p=fp||gen(t),it={id:++S.n,p};S.inv.push(it);
  if(t==5&&!S.my.includes(p))S.my.push(p);
  if(price(p)>S.best){S.best=price(p);S.bp=p}
  save();setBal();ui();$('#res').innerHTML='';
@@ -276,7 +286,7 @@ function sell(id){const i=S.inv.findIndex(x=>x.id==id);if(i<0)return 0;const v=p
 function ui(){
  $('#cnt').textContent=S.inv.length;
  $('#st').innerHTML=`Круток: <b>${S.sp}</b>. Эпический номер гарантирован через <b>${Math.max(0,PITY-S.pity)}</b> круток.${S.bp?` Лучшая находка: <b>${S.bp}</b> за ${fmt(S.best)}.`:''}`;
- const g=$('#go');g.disabled=busy||S.b<COST;g.textContent=!busy&&S.b<COST?'Не хватает денег, заберите бонус':`Крутить за ${fmt(COST)}`;
+ if(isAdm())$('#st').innerHTML+=`<br><b style="color:var(--y)">Админ:</b> ${forceText()}`;const g=$('#go');g.disabled=busy||S.b<COST;g.textContent=!busy&&S.b<COST?'Не хватает денег, заберите бонус':`Крутить за ${fmt(COST)}`;
  $('#fast').disabled=busy;$('#tomenu').disabled=busy;
  if($('#inv').classList.contains('on'))renderInv();
 }
@@ -297,7 +307,7 @@ $('#srt').onchange=renderInv;
 $('#junk').onclick=()=>{let s=0;S.inv=S.inv.filter(x=>{if(tier(x.p)<2){s+=price(x.p);return false}return true});S.b+=s;save();setBal();ui()};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));
- b.classList.add('on');$('#'+b.dataset.t).classList.add('on');if(b.dataset.t=='inv')renderInv();if(b.dataset.t=='top')loadTop()});
+ b.classList.add('on');$('#'+b.dataset.t).classList.add('on');if(b.dataset.t=='inv')renderInv();if(b.dataset.t=='top')loadTop();if(b.dataset.t=='adm')admRender()});
 $('#go').onclick=spin;
 $('#fast').onclick=e=>{fast=!fast;e.target.textContent='Быстрая крутка: '+(fast?'вкл':'выкл')};
 $('#mu').onclick=e=>{mute=!mute;e.target.textContent=mute?'🔇':'🔊'};
@@ -328,7 +338,7 @@ let mode='reg';
 function setMode(m){mode=m;const r=m=='reg';$('#tReg').classList.toggle('on',r);$('#tLog').classList.toggle('on',!r);$('#pw2w').style.display=r?'':'none';$('#nh').style.display=r?'':'none';$('#ok1').textContent=r?'Создать аккаунт':'Войти';$('#pw').autocomplete=r?'new-password':'current-password';$('#er').textContent=''}
 async function loadUser(u){
  uid=u.uid;const [p,s]=await Promise.all([db.collection('players').doc(uid).get(),db.collection('saves').doc(uid).get()]);
- NICK=p.exists?p.data().nick:'Игрок';S=Object.assign(dS(),s.exists?s.data().d:{});
+ NICK=p.exists?p.data().nick:'Игрок';S=Object.assign(dS(),s.exists?s.data().d:{});listenInbox();
 }
 async function submit(){
  const nick=$('#nk').value.trim(),pw=$('#pw').value,er=m=>{$('#er').textContent=m};er('');
@@ -338,7 +348,7 @@ async function submit(){
  if(mode=='reg'&&pw!==$('#pw2').value)return er('Пароли не совпадают.');
  $('#ok1').disabled=true;
  try{
-  if(mode=='reg'){const c=await auth.createUserWithEmailAndPassword(mail(nick),pw);uid=c.user.uid;NICK=nick;S=dS();await cloud()}
+  if(mode=='reg'){const c=await auth.createUserWithEmailAndPassword(mail(nick),pw);uid=c.user.uid;NICK=nick;S=dS();await cloud();listenInbox()}
   else{const c=await auth.signInWithEmailAndPassword(mail(nick),pw);await loadUser(c.user)}
   $('#nk').value=$('#pw').value=$('#pw2').value='';show('menu');
  }catch(e){er(EM[e.code]||'Не удалось выполнить вход ('+(e.code||e.message)+').')}
@@ -346,8 +356,8 @@ async function submit(){
 }
 function show(n,tab){
  document.querySelectorAll('.scr').forEach(e=>e.classList.remove('on'));$('#'+n).classList.add('on');
- if(n=='menu'){$('#mn').textContent=NICK;$('#ms').textContent=`Круток: ${S.sp}, мифических найдено: ${S.my.length} из ${MY.length}`;$('#mbal').textContent=fmt(S.b);$('#mc').textContent=`${S.inv.length} шт. на ${fmt(S.inv.reduce((s,x)=>s+price(x.p),0))}`}
- if(n=='game'){shown=S.b;$('#bal').textContent=fmt(S.b);$('#res').innerHTML='';ui();bonus();document.querySelector(`nav [data-t="${tab||'spin'}"]`).click()}
+ if(n=='menu'){$('#mn').innerHTML=esc(NICK)+(isAdm()?'<span class="crt">СОЗДАТЕЛЬ</span>':'');$('#ms').textContent=`Круток: ${S.sp}, мифических найдено: ${S.my.length} из ${MY.length}`;$('#mbal').textContent=fmt(S.b);$('#mc').textContent=`${S.inv.length} шт. на ${fmt(S.inv.reduce((s,x)=>s+price(x.p),0))}`}
+ if(n=='game'){$('#admTab').style.display=isAdm()?'':'none';shown=S.b;$('#bal').textContent=fmt(S.b);$('#res').innerHTML='';ui();bonus();document.querySelector(`nav [data-t="${tab||'spin'}"]`).click()}
  scrollTo(0,0);
 }
 $('#tReg').onclick=()=>setMode('reg');$('#tLog').onclick=()=>setMode('log');$('#ok1').onclick=submit;
@@ -355,7 +365,7 @@ $('#tReg').onclick=()=>setMode('reg');$('#tLog').onclick=()=>setMode('log');$('#
 $('#nk').oninput=e=>{const v=e.target.value,c=v.replace(/[^A-Za-zА-Яа-яЁё_]/g,'');e.target.value=c;$('#er').textContent=c!==v?'Можно использовать только русские и английские буквы и «_».':''};
 $('#tomenu').onclick=()=>show('menu');
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show('game',b.dataset.go));
-$('#out').onclick=async()=>{await cloud();await auth.signOut();uid=null;NICK='';S=dS();setMode('log');show('auth')};
+$('#out').onclick=async()=>{await cloud();if(unsubInbox){unsubInbox();unsubInbox=null}await auth.signOut();uid=null;NICK='';S=dS();setMode('log');show('auth')};
 /* рейтинг: общий, из Firestore */
 let topK='best';
 const TOPS={best:'Лучшие номера',b:'Богатейшие',sp:'Крутки'},PL=/^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/;
@@ -366,11 +376,101 @@ async function loadTop(){
  try{await cloud();const q=await db.collection('players').orderBy(topK,'desc').limit(10).get();
   all=q.docs.map(d=>{const x=d.data();return {id:d.id,nick:x.nick,p:x.bp||'',v:+x[topK]||0}}).filter(r=>(topK=='b'||r.v>0)&&(topK!='best'||PL.test(r.p)))}
  catch(e){err='Не удалось загрузить рейтинг.'}
- const row=(r,i)=>`<div class="rk ${r.id==uid?'me':''}"><div class="n">${i+1}</div><div><b>${esc(r.nick)}</b>${topK=='best'?plate(r.p):''}</div><div class="v">${topK=='sp'?r.v.toLocaleString('ru-RU'):fmt(r.v)}</div></div>`,
+ const row=(r,i)=>`<div class="rk ${r.id==uid?'me':''}"><div class="n">${i+1}</div><div><b>${esc(r.nick)}</b>${r.id===ADMIN_UID?'<span class="crt">СОЗДАТЕЛЬ</span>':''}${topK=='best'?plate(r.p):''}</div><div class="v">${topK=='sp'?r.v.toLocaleString('ru-RU'):fmt(r.v)}</div></div>`,
   place=all.findIndex(r=>r.id==uid)+1;
  $('#top').innerHTML=bar+`<div class="box">${err?`<div class="empty">${err}</div>`:all.length?all.map(row).join(''):'<div class="empty">Пока никого нет.</div>'}</div><p class="stats">Ваше место: <b>${place||'вне первой десятки'}</b>. Рейтинг общий для всех игроков.</p>`;
 }
 $('#top').onclick=e=>{const k=e.target.dataset.k;if(k){topK=k;loadTop()}};
+/* ===== админ-панель ===== */
+const isAdm=()=>!!uid&&uid===ADMIN_UID;
+let CW=null;try{CW=JSON.parse(localStorage.getItem('adm_w'))}catch(e){}
+if(!Array.isArray(CW)||CW.length!=6)CW=null;
+const FORCE={t:null,p:null,keep:false};
+function pickAdm(){const w=CW||T.map(t=>t.w),s=w.reduce((a,b)=>a+b,0);if(!(s>0))return pickTier();let r=Math.random()*s;for(let i=0;i<6;i++){r-=w[i];if(r<0)return i}return 0}
+const forceText=()=>FORCE.p?'Следующий номер: '+FORCE.p:FORCE.t!=null?'Следующая редкость: '+T[FORCE.t].n:'Крутка случайная';
+const LAT={A:'А',B:'В',E:'Е',K:'К',M:'М',H:'Н',O:'О',P:'Р',C:'С',T:'Т',Y:'У',X:'Х'};
+const normPl=s=>[...s.toUpperCase().replace(/\s/g,'')].map(c=>LAT[c]||c).join('');
+const PLX=/^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/;
+let admMsg='',admPl=[];
+function admNote(t){admMsg=t;const e=$('#aM');if(e)e.textContent=t}
+function admRender(){
+ if(!isAdm())return;
+ const w=CW||T.map(t=>t.w);
+ $('#adm').innerHTML=`<p class="ok" id="aM" style="min-height:18px">${esc(admMsg)}</p>
+ <div class="box"><h2>Следующая крутка</h2>
+  <label for="aT">Редкость</label><select id="aT"><option value="">Случайно</option>${T.map((t,i)=>`<option value="${i}" ${FORCE.t===i?'selected':''}>${t.n}</option>`).join('')}</select>
+  <label for="aP">Свой номер (необязательно, например А777ХА197)</label><input id="aP" list="aPl" maxlength="9" value="${FORCE.p||''}"><datalist id="aPl">${MY.map(m=>`<option value="${m.p}">`).join('')}</datalist>
+  <label class="chk"><input type="checkbox" id="aK" ${FORCE.keep?'checked':''}> Не сбрасывать после крутки</label>
+  <div class="bar"><button data-a="force">Применить</button><button data-a="unforce">Сбросить</button></div>
+  <p class="ok">${forceText()}</p></div>
+ <div class="box"><h2>Шансы выпадения (для ваших круток)</h2>
+  <div class="wg">${T.map((t,i)=>`<div><label>${t.n}, %</label><input type="number" min="0" step="0.1" data-w="${i}" value="${w[i]}"></div>`).join('')}</div>
+  <p class="ok">Числа пересчитываются в доли от суммы. Игрокам показываются обычные шансы.</p>
+  <div class="bar"><button data-a="wsave">Сохранить</button><button data-a="wmy">Только мифические</button><button data-a="wreset">Обычные</button></div></div>
+ <div class="box"><h2>Мой баланс</h2><input id="aB" type="number" inputmode="numeric" placeholder="Сумма">
+  <div class="bar"><button data-a="bset">Установить</button><button data-a="badd">Добавить</button></div></div>
+ <div class="box"><h2>Баланс игроков</h2>
+  <label for="aA">Сумма</label><input id="aA" type="number" inputmode="numeric" placeholder="Например, 100000">
+  <label for="aS">Поиск по нику</label><input id="aS" maxlength="16">
+  <div class="bar"><button data-a="pload">Загрузить игроков</button></div>
+  <p class="ok">= установить, + прибавить, − отнять. Изменение применится, когда игрок будет в игре.</p>
+  <div id="aL"></div></div>`;
+ if(admPl.length)admList();
+}
+async function admLoad(){
+ try{const q=await db.collection('players').orderBy('nick').limit(200).get();
+  admPl=q.docs.map(d=>({id:d.id,nick:d.data().nick||'',b:+d.data().b||0}));admList();admNote('Игроков: '+admPl.length)}
+ catch(e){admNote('Не удалось загрузить игроков: '+(e.code||e.message))}
+}
+function admList(){
+ const f=($('#aS').value||'').toLowerCase();
+ $('#aL').innerHTML=admPl.filter(p=>!f||p.nick.toLowerCase().includes(f)).map(p=>`<div class="rk" style="grid-template-columns:1fr auto"><div><b>${esc(p.nick)}</b>${p.id===ADMIN_UID?'<span class="crt">СОЗДАТЕЛЬ</span>':''}<div class="ok">${fmt(p.b)}</div></div><div class="bar" style="margin:0">${[['set','='],['add','+'],['sub','−']].map(([m,s])=>`<button data-a="pb" data-m="${m}" data-id="${p.id}">${s}</button>`).join('')}</div></div>`).join('')||'<div class="empty">Никого не найдено.</div>';
+}
+async function admSend(id,m){
+ const raw=$('#aA').value,n=Math.round(+raw);
+ if(raw===''||!Number.isFinite(n))return admNote('Введите сумму.');
+ const op={k:m=='set'?'set':'add',v:m=='set'?Math.max(0,n):(m=='sub'?-n:n),id:Date.now()*1000+rnd(1000)};
+ try{await db.collection('inbox').doc(id).set({ops:firebase.firestore.FieldValue.arrayUnion(op)},{merge:true});
+  const p=admPl.find(x=>x.id==id);admNote('Отправлено игроку '+(p?p.nick:'')+'. Применится, когда он зайдёт в игру.')}
+ catch(e){admNote('Не удалось отправить: '+(e.code||e.message)+'. Проверьте правила Firestore.')}
+}
+function admBal(m){
+ const raw=$('#aB').value,n=Math.round(+raw);if(raw===''||!Number.isFinite(n))return admNote('Введите сумму.');
+ S.b=Math.max(0,m=='set'?n:S.b+n);save();setBal();ui();admNote('Ваш баланс: '+fmt(S.b));
+}
+$('#adm').oninput=e=>{if(e.target.id=='aS')admList()};
+$('#adm').onclick=e=>{
+ const b=e.target.closest('button[data-a]');if(!b||!isAdm())return;const a=b.dataset.a;
+ if(a=='force'){
+  const p=normPl($('#aP').value),t=$('#aT').value;FORCE.keep=$('#aK').checked;
+  if(p){if(!PLX.test(p))return admNote('Неверный номер. Пример: А777ХА197.');FORCE.p=p;FORCE.t=null}
+  else{FORCE.p=null;FORCE.t=t===''?null:+t}
+  admNote('Готово. '+forceText());admRender();
+ }else if(a=='unforce'){FORCE.t=null;FORCE.p=null;FORCE.keep=false;admNote('Сброшено.');admRender()}
+ else if(a=='wsave'||a=='wmy'||a=='wreset'){
+  if(a=='wreset'){CW=null;try{localStorage.removeItem('adm_w')}catch(_){}admNote('Шансы обычные.');return admRender()}
+  const w=a=='wmy'?[0,0,0,0,0,100]:[...document.querySelectorAll('#adm [data-w]')].map(i=>Math.max(0,parseFloat(i.value)||0));
+  if(!(w.reduce((x,y)=>x+y,0)>0))return admNote('Сумма шансов должна быть больше нуля.');
+  CW=w;try{localStorage.setItem('adm_w',JSON.stringify(w))}catch(_){}
+  admNote('Шансы сохранены.');if(a=='wmy')admRender();
+ }
+ else if(a=='bset'||a=='badd')admBal(a=='bset'?'set':'add');
+ else if(a=='pload')admLoad();
+ else if(a=='pb')admSend(b.dataset.id,b.dataset.m);
+};
+/* письма от админа: изменение баланса игрока */
+let unsubInbox=null;const APPLIED=new Set();
+function listenInbox(){
+ if(unsubInbox)unsubInbox();
+ unsubInbox=db.collection('inbox').doc(uid).onSnapshot(s=>{
+  if(!s.exists)return;
+  const ops=(s.data().ops||[]).filter(o=>o&&!APPLIED.has(o.id)).sort((a,b)=>a.id-b.id);
+  if(!ops.length)return;
+  ops.forEach(o=>{APPLIED.add(o.id);const v=Math.round(+o.v)||0;if(o.k=='set')S.b=Math.max(0,v);else if(o.k=='add')S.b=Math.max(0,S.b+v)});
+  s.ref.delete().catch(()=>{});
+  save();setBal();ui();if($('#menu').classList.contains('on'))show('menu');
+ },()=>{});
+}
 let started=false;
 auth.onAuthStateChanged(async u=>{
  if(started)return;started=true;
