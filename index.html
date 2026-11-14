@@ -124,6 +124,26 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .adm select{width:100%;background:#14161a;border:1px solid var(--ln);border-radius:10px;padding:12px 14px;color:var(--tx);font:inherit;font-size:16px}
 .adm .wg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .adm .bar{margin-top:12px}
+/* mobile upgrader */
+.up-wrap{max-width:560px;margin:0 auto;padding:8px 0 24px}
+.up-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 16px}
+.up-head h2{font:700 25px Oswald,sans-serif;margin:0;color:var(--tx)}
+.up-sub{color:var(--mu);font-size:13px;margin-top:4px}
+.up-step{background:linear-gradient(145deg,#21182f,#1b1e27);border:1px solid #51406b;border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 8px 24px #0003}
+.up-label{display:flex;align-items:center;gap:9px;font-weight:700;margin-bottom:12px}
+.up-num{display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:#8b3dce;color:white;font:700 17px Oswald;box-shadow:0 0 15px #a855f766}
+.up-select{width:100%;min-width:0;background:#11131a;border:1px solid #57406e;color:var(--tx);border-radius:12px;padding:13px 12px;font:inherit;font-size:15px}
+.up-preview{display:flex;justify-content:center;align-items:center;min-height:76px;margin-top:10px;padding:10px;background:#11131a;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.up-preview .pl{--k:.9}
+.up-metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}
+.up-metric{background:#1c1d29;border:1px solid #4a3a61;border-radius:14px;padding:13px 10px;text-align:center;min-width:0}
+.up-metric small{display:block;color:var(--mu);font-size:12px;margin-bottom:5px}
+.up-metric b{font:700 25px Oswald;color:var(--y);overflow-wrap:anywhere}
+.up-warning{padding:12px;border:1px solid #9b6a18;background:#332516;color:#ffd36a;border-radius:12px;font-size:13px;line-height:1.4;margin:12px 0}
+.up-action{width:100%;font-size:21px;padding:16px}
+.up-help{color:var(--mu);font-size:12px;line-height:1.45;margin-top:10px}
+#upResult{margin-top:12px}
+@media(max-width:600px){.app{padding:10px 12px}.app>header{gap:8px}.app>header h1{font-size:19px}nav{overflow-x:auto;scrollbar-width:none;gap:2px}nav::-webkit-scrollbar{display:none}nav button{flex:0 0 auto;white-space:nowrap;padding:11px 12px;font-size:13px}.up-wrap{padding-top:2px}.up-head h2{font-size:23px}.up-step{padding:12px;border-radius:15px}.up-preview .pl{--k:.76}.up-metric b{font-size:23px}.up-action{position:sticky;bottom:10px;z-index:4;box-shadow:0 5px 0 #a78708,0 8px 24px #0009}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gc{padding:10px 5px}.gc .pl{--k:.52}.gc .row{gap:4px}.gc .row b{font-size:12px}.gc button{padding:5px 7px;font-size:12px}.coll{grid-template-columns:repeat(2,minmax(0,1fr))}.slot{padding:10px 4px}.slot .pl{--k:.52}.bal{font-size:17px;min-width:94px;padding:6px 9px}}
 </style><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -145,13 +165,27 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 
 <div class="app scr" id="game">
 <header><h1>Номерная рулетка</h1><div class="hr"><button class="ic" id="tomenu" style="width:auto;padding:0 14px">Меню</button><button class="ic" id="mu" aria-label="Звук">🔊</button><div class="bal" id="bal">0 ₽</div></div></header>
-<nav><button data-t="spin" class="on">Крутка</button><button data-t="inv">Хранилище<i id="cnt">0</i></button><button data-t="info">Шансы</button><button data-t="top">Рейтинг</button><button data-t="adm" id="admTab" style="display:none">Админ</button></nav>
+<nav><button data-t="spin" class="on">Крутка</button><button data-t="inv">Хранилище<i id="cnt">0</i></button><button data-t="upgrade">Апгрейдер</button><button data-t="info">Шансы</button><button data-t="top">Рейтинг</button><button data-t="adm" id="admTab" style="display:none">Админ</button></nav>
 
 <section id="spin" class="on">
 <div class="reel" id="reel"><div class="strip idle" id="strip"></div><div class="mark"></div><div class="road"></div></div>
 <div class="ctl"><button class="big" id="go">Крутить</button><button class="sm" id="fast">Быстрая крутка: выкл</button><button class="sm" id="bon">Бонус</button></div>
 <div id="res"></div>
 <p class="stats" id="st"></p>
+</section>
+
+<section id="upgrade">
+<div class="up-wrap">
+ <div class="up-head"><div><h2>Апгрейдер номеров</h2><div class="up-sub">Улучши номер и попробуй получить более редкий</div></div><div style="font:700 18px Oswald;color:var(--y);white-space:nowrap" id="upBal">0 ₽</div></div>
+ <div class="up-step"><div class="up-label"><span class="up-num">1</span> Выбери номер из хранилища</div><select class="up-select" id="upSource"><option value="">Выбери свой номер…</option></select><div class="up-preview" id="upSourceView"><span class="ok">Сначала выбери номер</span></div></div>
+ <div style="text-align:center;color:var(--y);font-size:24px">↓</div>
+ <div class="up-step"><div class="up-label"><span class="up-num">2</span> Выбери желаемую редкость</div><select class="up-select" id="upTarget"></select><div class="up-preview" id="upTargetView"><span class="ok">Целевой номер будет случайным из выбранной редкости</span></div></div>
+ <div class="up-metrics"><div class="up-metric"><small>Шанс успеха</small><b id="upChance">—</b></div><div class="up-metric"><small>Стоимость попытки</small><b id="upCost">—</b></div></div>
+ <div class="up-warning">⚠️ При неудаче выбранный номер будет потерян. При успехе он заменится новым номером выбранной редкости.</div>
+ <button class="big up-action" id="upGo" disabled>⬆ Улучшить</button>
+ <div class="up-help">Шанс зависит от разницы редкости: чем выше желаемый уровень, тем сложнее улучшение. Деньги за попытку списываются независимо от результата.</div>
+ <div id="upResult" aria-live="polite"></div>
+</div>
 </section>
 
 <section id="inv">
@@ -282,13 +316,48 @@ function reveal(it,t){
 }
 function sell(id){const i=S.inv.findIndex(x=>x.id==id);if(i<0)return 0;const v=price(S.inv[i].p);S.inv.splice(i,1);S.b+=v;save();setBal();ui();return v}
 
+/* upgrader */
+const UP_CHANCE=[0,70,45,25,12,5];
+function upCost(target){return 250+target*250}
+function upChance(source,target){const d=target-source;return d>0?UP_CHANCE[d]:0}
+function renderUpgrade(){
+ const src=$('#upSource'),target=$('#upTarget');
+ const old=src.value;const items=[...S.inv].sort((a,b)=>tier(a.p)-tier(b.p)||price(a.p)-price(b.p));
+ src.innerHTML='<option value="">Выбери свой номер…</option>'+items.map(x=>`<option value="${x.id}">${x.p} · ${T[tier(x.p)].n} · ${fmt(price(x.p))}</option>`).join('');
+ if(items.some(x=>String(x.id)===old))src.value=old;
+ const st=src.value?S.inv.find(x=>String(x.id)===src.value):null;
+ const min=st?tier(st.p)+1:1;
+ target.innerHTML=T.map((t,i)=>`<option value="${i}" ${i<min?'disabled':''}>${t.n}${i<min?' — недоступно':''}</option>`).join('');
+ if(+target.value<min||!target.value)target.value=String(Math.min(5,min));
+ $('#upBal').textContent=fmt(S.b);
+ $('#upSourceView').innerHTML=st?`${plate(st.p)}<div class="ok">${T[tier(st.p)].n} · ${fmt(price(st.p))}</div>`:'<span class="ok">Сначала выбери номер</span>';
+ const tt=+target.value, chance=st?upChance(tier(st.p),tt):0,cost=upCost(tt);
+ $('#upChance').textContent=st?chance+'%':'—';$('#upCost').textContent=st?fmt(cost):'—';
+ $('#upTargetView').innerHTML=st&&tt>tier(st.p)?`${plate(gen(tt))}<div class="ok">${T[tt].n} · пример возможного результата</div>`:'<span class="ok">Выбери редкость выше исходного номера</span>';
+ $('#upGo').disabled=!st||chance<=0||S.b<cost||busy;
+ $('#upGo').textContent=S.b<cost&&st?'Не хватает денег':`⬆ Улучшить за ${fmt(cost)}`;
+}
+function doUpgrade(){
+ if(busy)return;const id=+$('#upSource').value,src=S.inv.find(x=>x.id===id);if(!src)return;
+ const from=tier(src.p),to=+$('#upTarget').value,chance=upChance(from,to),cost=upCost(to);
+ if(!chance||to<=from||S.b<cost)return;
+ if(!confirm(`Улучшить ${src.p} до редкости «${T[to].n}»?\nШанс: ${chance}%\nСтоимость: ${fmt(cost)}\nПри неудаче номер сгорит.`))return;
+ S.b-=cost;const idx=S.inv.findIndex(x=>x.id===id);if(idx<0)return;
+ S.inv.splice(idx,1);const success=Math.random()*100<chance;
+ if(success){const p=gen(to),item={id:++S.n,p};S.inv.push(item);if(to===5&&!S.my.includes(p))S.my.push(p);if(price(p)>S.best){S.best=price(p);S.bp=p}
+  $('#upResult').innerHTML=`<div class="card" style="--c:${T[to].c}"><div class="tn ${to===5?'rb':''}">УСПЕШНОЕ УЛУЧШЕНИЕ!</div>${plate(p)}<div class="pr">${fmt(price(p))}</div><div class="ok">Новый номер добавлен в хранилище</div></div>`;chime(to);burst(to===5?'rb':T[to].c,90);
+ }else{$('#upResult').innerHTML=`<div class="box" style="text-align:center;border-color:#a83e58"><div style="font:700 24px Oswald;color:#ff7186">НЕУДАЧА</div><p style="margin-top:8px">Номер ${src.p} сгорел. Попробуй ещё раз!</p></div>`;snd(150,.4,'sawtooth',.08)}
+ save();setBal();ui();renderUpgrade();
+}
+$('#upSource').onchange=renderUpgrade;$('#upTarget').onchange=renderUpgrade;$('#upGo').onclick=doUpgrade;
+
 /* ui */
 function ui(){
  $('#cnt').textContent=S.inv.length;
  $('#st').innerHTML=`Круток: <b>${S.sp}</b>. Эпический номер гарантирован через <b>${Math.max(0,PITY-S.pity)}</b> круток.${S.bp?` Лучшая находка: <b>${S.bp}</b> за ${fmt(S.best)}.`:''}`;
  if(isAdm())$('#st').innerHTML+=`<br><b style="color:var(--y)">Админ:</b> ${forceText()}`;const g=$('#go');g.disabled=busy||S.b<COST;g.textContent=!busy&&S.b<COST?'Не хватает денег, заберите бонус':`Крутить за ${fmt(COST)}`;
  $('#fast').disabled=busy;$('#tomenu').disabled=busy;
- if($('#inv').classList.contains('on'))renderInv();
+ if($('#inv').classList.contains('on'))renderInv();if($('#upgrade').classList.contains('on'))renderUpgrade();
 }
 function renderInv(){
  $('#coll').innerHTML=MY.map(m=>{const g=S.my.includes(m.p);return `<div class="slot ${g?'got':''}">${g?plate(m.p):'<div class="q">? ? ?</div>'}<span>${g?'Найден':'Ещё не найден'}, ${fmt(m.v)}</span></div>`}).join('');
@@ -307,7 +376,7 @@ $('#srt').onchange=renderInv;
 $('#junk').onclick=()=>{let s=0;S.inv=S.inv.filter(x=>{if(tier(x.p)<2){s+=price(x.p);return false}return true});S.b+=s;save();setBal();ui()};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));
- b.classList.add('on');$('#'+b.dataset.t).classList.add('on');if(b.dataset.t=='inv')renderInv();if(b.dataset.t=='top')loadTop();if(b.dataset.t=='adm')admRender()});
+ b.classList.add('on');$('#'+b.dataset.t).classList.add('on');if(b.dataset.t=='inv')renderInv();if(b.dataset.t=='upgrade'){renderUpgrade();$('#upResult').innerHTML=''}if(b.dataset.t=='top')loadTop();if(b.dataset.t=='adm')admRender()});
 $('#go').onclick=spin;
 $('#fast').onclick=e=>{fast=!fast;e.target.textContent='Быстрая крутка: '+(fast?'вкл':'выкл')};
 $('#mu').onclick=e=>{mute=!mute;e.target.textContent=mute?'🔇':'🔊'};
